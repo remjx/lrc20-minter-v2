@@ -213,8 +213,8 @@ export default function App() {
       <h1 style={{ marginBottom: "2px" }}>
         LRC-20 minter (shrdlu2 version)
         <div style={{ display: "inline-block", marginLeft: "12px" }}>
-          <a href="https://github.com/remjx/lrc20-minter">
-            <img src="/lrc20-minter/github.png" alt="source code" height={32} width={32} />
+          <a href="https://github.com/remjx/lrc20-minter-v2">
+            <img src="/lrc20-minter-v2/github.png" alt="source code" height={32} width={32} />
           </a>
         </div>
       </h1>
