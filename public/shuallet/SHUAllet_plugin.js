@@ -437,7 +437,6 @@ const unlockCoins = async(pkWIF, receiveAddress, txid, oIdx = 0) => {
 const getUTXOs = async address => {
     const r = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${address}/unspent`);
     const res = await r.json();
-    console.log('utxos response', res)
     return res;
 }
 const between = (x, min, max) => { return x >= min && x <= max }
@@ -476,9 +475,7 @@ const getPaymentUTXOs = async(address, amount) => {
 }
 const getWalletBalance = async address => {
     if (!address) address = localStorage.walletAddress;
-    console.log('address', address)
     const utxos = await getUTXOs(address);
-    console.log('utxos', utxos)
     const balance = utxos.reduce(((t, e) => t + e.value), 0)
     return balance; 
 }
@@ -571,10 +568,8 @@ const payForRawTx = async rawtx => {
     const satoshis = bsvtx.outputs.reduce(((t, e) => t + e._satoshis), 0);
     const txFee = parseInt(((bsvtx._estimateSize() + P2PKH_INPUT_SIZE) * FEE_FACTOR)) + 1;
     const utxos = await getPaymentUTXOs(localStorage.walletAddress, satoshis + txFee);
-    console.log('payment utxos', utxos)
     if (!utxos.length) { throw `Insufficient funds` }
     bsvtx.from(utxos);
-    console.log('utxos', utxos)
     const inputSatoshis = utxos.reduce(((t, e) => t + e.satoshis), 0);
     bsvtx.to(localStorage.walletAddress, inputSatoshis - satoshis - txFee);
     bsvtx.sign(bsv.PrivateKey.fromWIF(localStorage.walletKey));
