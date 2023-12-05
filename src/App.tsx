@@ -41,7 +41,7 @@ function generateDeployInscription(opts: {
   max: number;
   lim: number;
   blocks: number;
-  yieldFactor: number;
+  sats: number;
 }) {
   Object.values(opts).forEach((value) => {
     if (!value) throw new Error("Missing opt");
@@ -50,22 +50,22 @@ function generateDeployInscription(opts: {
     p: "lrc-20",
     op: "deploy",
     tick: opts.tick,
-    max: opts.max.toString(),
-    lim: opts.lim.toString(),
-    blocks: opts.blocks.toString(),
-    yield: opts.yieldFactor.toString(),
+    max: opts.max,
+    lim: opts.lim,
+    blocks: opts.blocks,
+    sats: opts.sats,
   });
 }
 
-function generateMintInscription(opts: { tick: string; amt: number }) {
+function generateMintInscription(opts: { tickid: string; amt: number }) {
   Object.values(opts).forEach((value) => {
     if (!value) throw new Error("Missing opt");
   });
   return JSON.stringify({
     p: "lrc-20",
     op: "mint",
-    tick: opts.tick,
-    amt: opts.amt.toString(),
+    id: opts.tickid,
+    amt: opts.amt,
   });
 }
 
@@ -77,8 +77,6 @@ export default function App() {
   const [status, setStatus] = useState<"idle" | "submitting">(
     "idle"
   );
-  const bsvInputRef = useRef<HTMLInputElement>(null)
-  const blocksToLockInputRef = useRef<HTMLInputElement>(null)
   // const [unlocking, setUnlocking] = useState(false)
   const fileUploadRef = useRef<HTMLInputElement>(null);
   async function handleRestoreWallet() {
@@ -119,15 +117,6 @@ export default function App() {
       handleRefreshBalance();
     }
   }, [connectedWalletAddress]);
-  useEffect(() => {
-    if (op === "deploy") {
-      if (blocksToLockInputRef.current) blocksToLockInputRef.current.value = "21000"
-      if (bsvInputRef.current) bsvInputRef.current.value = "1"
-    } else {
-      if (blocksToLockInputRef.current) blocksToLockInputRef.current.value = ""
-      if (bsvInputRef.current) bsvInputRef.current.value = ""
-    }
-  }, [op])
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     const formData = new FormData(e.currentTarget);
@@ -135,12 +124,12 @@ export default function App() {
     setStatus("submitting");
     try {
       const bsv = await handleRefreshBalance()
-      const bsvAmt = Number(formData.get("bsv"));
-      if (bsv < bsvAmt) {
+      const satsAmt = Number(formData.get("sats"));
+      if (bsv * 100_000_000 < satsAmt) {
         throw new Error("Insufficient balance");
       }
-      const blocksToLock = Number(formData.get("blocksToLock"));
-      if (!blocksToLock) throw new Error("Invalid blocks to lock.");
+      const blocks = Number(formData.get("blocks"));
+      if (!blocks) throw new Error("Invalid blocks to lock.");
       let inscriptionData: string;
       switch (op) {
         case "deploy": {
@@ -148,14 +137,14 @@ export default function App() {
             tick: String(formData.get("tick")),
             max: Number(formData.get("max")),
             lim: Number(formData.get("lim")),
-            blocks: Number(formData.get("blocks")),
-            yieldFactor: Number(formData.get("yield")),
+            blocks,
+            sats: Number(formData.get("sats")),
           });
           break;
         }
         case "mint": {
           inscriptionData = generateMintInscription({
-            tick: String(formData.get("tick")),
+            tickid: String(formData.get("tickid")),
             amt: Number(formData.get("amt")),
           });
           break;
@@ -170,21 +159,21 @@ export default function App() {
         throw new Error("Error getting addresses.");
       const inscription: Inscription = {
         data: inscriptionData,
-        mediaType: "application/lrc-20",
+        mediaType: "application/json",
         metaDataTemplate: null,
         toAddress: ordAddress,
       };
       const lock: Lock = {
         address: bsvAddress,
-        blocksToLock,
-        satoshisToLock: parseInt((bsvAmt * 100_000_000).toString(), 10),
+        blocksToLock: blocks,
+        satoshisToLock: parseInt((satsAmt).toString(), 10),
       };
       const payer: Payer = {
         walletAddress: bsvAddress,
       };
       const rawTx = await lockscribeTx(inscription, lock, payer);
-      await broadcast(rawTx);
-      alert('successfully broadcasted')
+      const t = await broadcast(rawTx);
+      alert('successfully broadcasted tx ' + t)
     } catch (e) {
       console.error(e);
       alert(e);
@@ -222,14 +211,14 @@ export default function App() {
   return (
     <div>
       <h1 style={{ marginBottom: "2px" }}>
-        LRC-20 minter
+        LRC-20 minter (shrdlu2 version)
         <div style={{ display: "inline-block", marginLeft: "12px" }}>
           <a href="https://github.com/remjx/lrc20-minter">
             <img src="/lrc20-minter/github.png" alt="source code" height={32} width={32} />
           </a>
         </div>
       </h1>
-      <div style={{ marginBottom: "16px" }}>
+      <div>
         Follow{" "}
         <a
           href="https://x.com/lockinalswallet"
@@ -238,6 +227,9 @@ export default function App() {
         >
           @lockinalswallet
         </a>
+      </div>
+      <div style={{ marginBottom: "16px" }}>
+          warning: use at your own risk.
       </div>
 
       {!connectedWalletAddress ? (
@@ -317,31 +309,6 @@ export default function App() {
             <label>mint</label>
           </div>
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: "12px" }}>
-              <div style={{ color: "gray", marginTop: "12px" }}>lock:</div>
-              <div>
-                <label># bitcoins to lock: </label>
-                <input
-                  name="bsv"
-                  type="number"
-                  min={0.00000001}
-                  step={0.00000001}
-                  disabled={status === "submitting"}
-                  ref={bsvInputRef}
-                />
-              </div>
-              <div>
-                <label># blocks to lock: </label>
-                <input
-                  name="blocksToLock"
-                  type="number"
-                  min={1}
-                  disabled={status === "submitting"}
-                  ref={blocksToLockInputRef}
-                />
-              </div>
-            </div>
-            <div style={{ color: "gray" }}>inscription:</div>
             {op === "deploy" && (
               <>
                 <div>
@@ -380,9 +347,9 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label>yield: </label>
+                  <label>sats: </label>
                   <input
-                    name="yield"
+                    name="sats"
                     type="number"
                     min={1}
                     disabled={status === "submitting"}
@@ -393,9 +360,9 @@ export default function App() {
             {op === "mint" && (
               <>
                 <div>
-                  <label>tick: </label>
+                  <label>tick id (txid_vout): </label>
                   <input
-                    name="tick"
+                    name="tickid"
                     type="text"
                     disabled={status === "submitting"}
                   />
@@ -408,14 +375,26 @@ export default function App() {
                     disabled={status === "submitting"}
                   />
                 </div>
+                <div>
+                  <label>blocks: </label>
+                  <input
+                    name="blocks"
+                    type="number"
+                    min={1}
+                    disabled={status === "submitting"}
+                  />
+                </div>
+                <div>
+                  <label>sats: </label>
+                  <input
+                    name="sats"
+                    type="number"
+                    min={1}
+                    disabled={status === "submitting"}
+                  />
+                </div>
               </>
             )}
-            <div style={{ color: "red", marginTop: "12px" }}>
-              warning: use this experimental tool at your own risk.
-              <br />
-              warning: token availability unknown. wen indexer?
-              <br />
-            </div>
             <br />
             <button disabled={status === "submitting"}>{status === 'submitting' ? 'submitting' : 'submit'}</button>
           </form>

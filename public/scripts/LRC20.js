@@ -5,7 +5,7 @@ const lockscribeTx = async(
     { walletAddress } // payer
 ) => {
     const currentBlock = await getBlock()
-    const blockHeight = currentBlock + blocksToLock + 3;
+    const blockHeight = currentBlock + blocksToLock + 10;
     const bsvtx = bsv.Transaction();
 
     // build lock output
