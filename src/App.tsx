@@ -34,6 +34,7 @@ declare const setupWallet: any;
 declare const restoreWallet: any;
 declare const backupWallet: any;
 declare const getWalletBalance: any;
+declare const clearUTXOs: any;
 // declare const unlockCoins: any;
 
 function generateDeployInscription(opts: {
@@ -105,6 +106,7 @@ export default function App() {
       if (hasBackup) {
         localStorage.clear();
         setConnectedWalletAddress("");
+        clearUTXOs();
       }
     } catch (e) {
       alert(e);
